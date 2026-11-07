@@ -1,0 +1,277 @@
+<div class="app-shell" dir="rtl">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/" aria-label="חדרים - דף הבית">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M4 20V5.8c0-.5.3-.9.8-1l6.5-1.6c.6-.1 1.2.3 1.2 1V20M12.5 9.5l6.7 1.3c.5.1.8.5.8 1V20M2.5 20h19" />
+            <path d="M7.5 8h1m-1 4h1m-1 4h1m7.5-1h1m-1 4h1" />
+          </svg>
+        </span>
+        <span class="brand-name">חדרים</span>
+      </a>
+      <span class="topbar-caption">ניהול חדרי ישיבות</span>
+    </div>
+  </header>
+
+  <main class="page-content">
+    <section class="page-heading">
+      <div>
+        <p class="eyebrow">ניהול חללי עבודה</p>
+        <h1>הזמנות חדרי ישיבות</h1>
+        <p class="page-subtitle">כל הפגישות שלך, במקום אחד.</p>
+      </div>
+      <button
+        class="button button-primary add-button"
+        type="button"
+        [disabled]="!selectedRoomId()"
+        (click)="openDialog()"
+      >
+        <span class="plus-icon" aria-hidden="true">+</span>
+        הזמנה חדשה
+      </button>
+    </section>
+
+    @if (pageError()) {
+      <div class="alert alert-error" role="alert">
+        <span class="alert-icon" aria-hidden="true">!</span>
+        <span>{{ pageError() }}</span>
+      </div>
+    }
+
+    <section class="filter-card" aria-label="בחירת חדר ותאריך">
+      <div class="filter-field room-field">
+        <label for="room-select">חדר ישיבות</label>
+        <div class="select-wrap">
+          <select
+            id="room-select"
+            [value]="selectedRoomId() ?? ''"
+            [disabled]="isLoadingRooms() || rooms().length === 0"
+            (change)="onRoomChange($event)"
+          >
+            @for (room of rooms(); track room.roomId) {
+              <option [value]="room.roomId">{{ room.name }}</option>
+            }
+          </select>
+          <span class="select-chevron" aria-hidden="true">⌄</span>
+        </div>
+      </div>
+
+      <div class="filter-divider" aria-hidden="true"></div>
+
+      <div class="date-filter">
+        <span class="filter-label">תאריך</span>
+        <div class="date-controls">
+          <button class="icon-button" type="button" aria-label="יום קודם" (click)="shiftDate(-1)">
+            <span aria-hidden="true">›</span>
+          </button>
+          <label class="date-input-wrap">
+            <span class="calendar-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <rect x="3.5" y="5" width="17" height="16" rx="2" />
+                <path d="M7.5 3v4m9-4v4M3.5 9h17" />
+              </svg>
+            </span>
+            <input
+              aria-label="בחירת תאריך"
+              type="date"
+              [value]="selectedDate()"
+              (change)="onDateChange($event)"
+            />
+          </label>
+          <button class="icon-button" type="button" aria-label="יום הבא" (click)="shiftDate(1)">
+            <span aria-hidden="true">‹</span>
+          </button>
+          <button class="today-button" type="button" (click)="goToToday()">היום</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="schedule-section" aria-live="polite">
+      <div class="schedule-heading">
+        <div>
+          <h2>{{ formatSelectedDate() }}</h2>
+          <p>
+            @if (isLoadingRooms()) {
+              טוען חדרים...
+            } @else if (selectedRoomName) {
+              {{ selectedRoomName }} · {{ reservations().length }} הזמנות
+            } @else {
+              לא נמצאו חדרים
+            }
+          </p>
+        </div>
+        <span class="schedule-date-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <rect x="3.5" y="5" width="17" height="16" rx="2" />
+            <path d="M7.5 3v4m9-4v4M3.5 9h17M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01" />
+          </svg>
+        </span>
+      </div>
+
+      @if (isLoadingRooms() || isLoadingReservations()) {
+        <div class="loading-state" role="status">
+          <span class="spinner" aria-hidden="true"></span>
+          טוען הזמנות...
+        </div>
+      } @else if (reservations().length === 0 && !pageError()) {
+        <div class="empty-state">
+          <span class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3.5" y="5" width="17" height="16" rx="2" />
+              <path d="M7.5 3v4m9-4v4M3.5 9h17M8 13h.01M12 13h.01M16 13h.01" />
+            </svg>
+          </span>
+          <h3>אין הזמנות ליום הזה</h3>
+          <p>אפשר לנצל את הזמן הפנוי ולתאם פגישה חדשה.</p>
+          <button class="button button-secondary" type="button" (click)="openDialog()">
+            יצירת הזמנה
+          </button>
+        </div>
+      } @else {
+        <div class="reservation-list">
+          @for (reservation of reservations(); track reservation.reservationId) {
+            <article class="reservation-card">
+              <div class="time-column" dir="ltr">
+                <span class="time-start">{{ formatTime(reservation.startsAt) }}</span>
+                <span class="time-dash" aria-hidden="true"></span>
+                <span class="time-end">{{ formatTime(reservation.endsAt) }}</span>
+              </div>
+              <div class="reservation-accent" aria-hidden="true"></div>
+              <div class="reservation-details">
+                <h3>{{ reservation.title }}</h3>
+                <p>
+                  <span class="person-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="8" r="3.5" />
+                      <path d="M5 20c.5-3.5 3.2-5.5 7-5.5s6.5 2 7 5.5" />
+                    </svg>
+                  </span>
+                  {{ reservation.bookerName }}
+                </p>
+              </div>
+              <button
+                class="cancel-button"
+                type="button"
+                [disabled]="cancellingId() === reservation.reservationId"
+                [attr.aria-label]="'ביטול ההזמנה ' + reservation.title"
+                (click)="cancelReservation(reservation)"
+              >
+                @if (cancellingId() === reservation.reservationId) {
+                  מבטל...
+                } @else {
+                  <span aria-hidden="true">×</span>
+                  ביטול
+                }
+              </button>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  </main>
+
+  @if (isDialogOpen()) {
+    <div
+      class="modal-backdrop"
+      tabindex="-1"
+      (click)="closeDialog()"
+      (keydown.escape)="closeDialog()"
+    >
+      <section
+        class="reservation-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dialog-title"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="dialog-header">
+          <div>
+            <p class="eyebrow">הוספת פגישה ליומן</p>
+            <h2 id="dialog-title">הזמנה חדשה</h2>
+          </div>
+          <button
+            class="dialog-close"
+            type="button"
+            aria-label="סגירה"
+            [disabled]="isSaving()"
+            (click)="closeDialog()"
+          >×</button>
+        </header>
+
+        <div class="dialog-context">
+          <span>{{ selectedRoomName }}</span>
+          <span aria-hidden="true">·</span>
+          <span>{{ formatSelectedDate() }}</span>
+        </div>
+
+        <form [formGroup]="reservationForm" (ngSubmit)="createReservation()">
+          <div class="form-field">
+            <label for="title">כותרת הפגישה <span class="required-mark">*</span></label>
+            <input
+              id="title"
+              type="text"
+              formControlName="title"
+              maxlength="200"
+              placeholder="לדוגמה: ישיבת צוות"
+              autocomplete="off"
+            />
+            @if (reservationForm.controls.title.touched && reservationForm.controls.title.invalid) {
+              <span class="field-error">יש להזין כותרת לפגישה.</span>
+            }
+          </div>
+
+          <div class="form-field">
+            <label for="booker-name">שם המזמין <span class="required-mark">*</span></label>
+            <input
+              id="booker-name"
+              type="text"
+              formControlName="bookerName"
+              maxlength="200"
+              placeholder="השם שלך"
+              autocomplete="name"
+            />
+            @if (reservationForm.controls.bookerName.touched && reservationForm.controls.bookerName.invalid) {
+              <span class="field-error">יש להזין את שם המזמין.</span>
+            }
+          </div>
+
+          <div class="form-row">
+            <div class="form-field">
+              <label for="starts-at">שעת התחלה <span class="required-mark">*</span></label>
+              <input id="starts-at" type="time" formControlName="startsAt" dir="ltr" />
+            </div>
+            <div class="form-field">
+              <label for="ends-at">שעת סיום <span class="required-mark">*</span></label>
+              <input id="ends-at" type="time" formControlName="endsAt" dir="ltr" />
+            </div>
+          </div>
+
+          @if (formError()) {
+            <div class="alert alert-error form-alert" role="alert">{{ formError() }}</div>
+          }
+
+          <footer class="dialog-actions">
+            <button
+              class="button button-primary submit-button"
+              type="submit"
+              [disabled]="isSaving()"
+            >
+              @if (isSaving()) {
+                שומר...
+              } @else {
+                שמירת ההזמנה
+              }
+            </button>
+            <button
+              class="button button-quiet"
+              type="button"
+              [disabled]="isSaving()"
+              (click)="closeDialog()"
+            >חזרה</button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  }
+</div>
